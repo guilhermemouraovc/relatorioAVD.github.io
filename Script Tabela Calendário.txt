@@ -1,0 +1,32 @@
+let
+    startDate = #date(2020, 1, 1),
+    endDate = Date.From(DateTime.LocalNow()),
+
+    numDays = Duration.From(endDate - startDate),
+    dateList = List.Dates(startDate, Number.From(numDays) + 1, #duration(1, 0, 0, 0)),
+    dateTable = Table.FromList(dateList, Splitter.SplitByNothing()),
+    renamedTable = Table.RenameColumns(dateTable, {{"Column1", "date_short"}}),
+
+    numDayColumn = Table.AddColumn(renamedTable, "num_day", each Date.Day([date_short]), Int64.Type),
+    numMonthColumn = Table.AddColumn(numDayColumn, "num_month", each Date.Month([date_short]), Int64.Type),
+    numYearColumn = Table.AddColumn(numMonthColumn, "num_year", each Date.Year([date_short]), Int64.Type),
+
+    nameMonthBrColumn = Table.AddColumn(numYearColumn, "name_month_br", each Date.ToText([date_short], "MMMM"), type text),
+    nameMonthUsColumn = Table.AddColumn(nameMonthBrColumn, "name_month_us", each Date.ToText([date_short], "MMMM", "en-US"), type text),
+    nameMonthShortBrColumn = Table.AddColumn(nameMonthUsColumn, "name_month_short_br", each Text.Start([name_month_br], 3), type text),
+    nameMonthShortUsColumn = Table.AddColumn(nameMonthShortBrColumn, "name_month_short_us", each Text.Start([name_month_us], 3), type text),
+
+    numWeekdayColumn = Table.AddColumn(nameMonthShortUsColumn, "num_weekday", each Date.DayOfWeek([date_short]), Int64.Type),
+    nameWeekdayShortBrColumn = Table.AddColumn(numWeekdayColumn, "name_weekday_short_br", each Text.Start(Date.ToText([date_short], "dddd"), 3), type text),
+    nameWeekdayBrColumn = Table.AddColumn(nameWeekdayShortBrColumn, "name_weekday_br", each Date.ToText([date_short], "dddd"), type text),
+    nameWeekdayShort2BrColumn = Table.AddColumn(nameWeekdayBrColumn, "name_weekday_short2_br", each Text.Start([name_weekday_br], 3), type text),
+    nameWeekdayUsColumn = Table.AddColumn(nameWeekdayShort2BrColumn, "name_weekday_us", each Date.ToText([date_short], "dddd", "en-US"), type text),
+    nameWeekdayShortUsColumn = Table.AddColumn(nameWeekdayUsColumn, "name_weekday_short_us", each Text.Start([name_weekday_us], 3), type text),
+
+    weekNumberColumn = Table.AddColumn(nameWeekdayShortUsColumn, "week_number", each Date.WeekOfYear([date_short]), Int64.Type),
+    weekNameColumn = Table.AddColumn(weekNumberColumn, "week_name", each "W" & Text.PadStart(Text.From([week_number]), 2, "0"), type text),
+
+    finalTable = Table.SelectColumns(weekNameColumn, {"date_short", "num_day", "num_month", "num_year", "name_month_br", "name_month_us", "name_month_short_br", "name_month_short_us", "num_weekday", "name_weekday_short_br", "name_weekday_br", "name_weekday_short2_br", "name_weekday_us", "name_weekday_short_us", "week_number", "week_name"}),
+    #"Tipo Alterado" = Table.TransformColumnTypes(finalTable,{{"date_short", type date}})
+in
+    #"Tipo Alterado"

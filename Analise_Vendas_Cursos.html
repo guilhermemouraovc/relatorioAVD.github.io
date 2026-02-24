@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Análise de Vendas de Cursos</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --primary: #1a1a2e;
+    --secondary: #16213e;
+    --accent: #0f3460;
+    --highlight: #e94560;
+    --gold: #f5a623;
+    --teal: #00b4d8;
+    --green: #06d6a0;
+    --purple: #7b2d8b;
+    --card-bg: #1e2a3a;
+    --text: #e8eaf0;
+    --subtext: #8a9bb8;
+    --border: #2a3a5a;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #0d1117 0%, #1a1a2e 50%, #0d1117 100%);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* HEADER */
+  .header {
+    background: linear-gradient(90deg, #0f3460 0%, #7b2d8b 50%, #e94560 100%);
+    padding: 18px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  }
+  .header h1 { font-size: 22px; font-weight: 700; letter-spacing: 1px; }
+  .header .subtitle { font-size: 13px; opacity: 0.85; margin-top: 2px; }
+  .header .logo {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 13px; opacity: 0.9;
+  }
+  .header .logo-icon {
+    width: 36px; height: 36px; border-radius: 8px;
+    background: rgba(255,255,255,0.2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+  }
+
+  /* TABS */
+  .tabs {
+    display: flex; gap: 0;
+    background: var(--secondary);
+    padding: 0 32px;
+    border-bottom: 1px solid var(--border);
+  }
+  .tab {
+    padding: 12px 28px; cursor: pointer;
+    font-size: 14px; font-weight: 500;
+    color: var(--subtext);
+    border-bottom: 3px solid transparent;
+    transition: all 0.2s;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active {
+    color: var(--gold);
+    border-bottom-color: var(--gold);
+  }
+
+  /* MAIN LAYOUT */
+  .main { padding: 24px 32px; }
+
+  /* FILTERS */
+  .filters {
+    display: flex; flex-wrap: wrap; gap: 16px;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin-bottom: 20px;
+    align-items: flex-end;
+  }
+  .filter-group { display: flex; flex-direction: column; gap: 6px; min-width: 160px; }
+  .filter-group label { font-size: 11px; color: var(--subtext); text-transform: uppercase; letter-spacing: 0.5px; }
+  .filter-group select {
+    background: var(--secondary);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 13px;
+    cursor: pointer;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .filter-group select:focus { border-color: var(--gold); }
+  .filter-btn {
+    padding: 9px 20px; border-radius: 8px;
+    background: var(--highlight); color: white;
+    border: none; cursor: pointer; font-size: 13px; font-weight: 600;
+    transition: background 0.2s;
+    height: 37px;
+  }
+  .filter-btn:hover { background: #c73350; }
+  .filter-btn.reset {
+    background: var(--accent);
+  }
+  .filter-btn.reset:hover { background: #1a4a80; }
+
+  /* KPI CARDS */
+  .kpi-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+  .kpi-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  .kpi-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+  }
+  .kpi-card.c1::before { background: linear-gradient(90deg, var(--gold), #f7c85f); }
+  .kpi-card.c2::before { background: linear-gradient(90deg, var(--teal), #48cae4); }
+  .kpi-card.c3::before { background: linear-gradient(90deg, var(--green), #52e5c0); }
+  .kpi-card.c4::before { background: linear-gradient(90deg, var(--highlight), #ff6b8a); }
+  .kpi-card:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,0,0,0.3); }
+  .kpi-label { font-size: 11px; color: var(--subtext); text-transform: uppercase; letter-spacing: 0.5px; }
+  .kpi-value { font-size: 28px; font-weight: 700; line-height: 1; }
+  .kpi-card.c1 .kpi-value { color: var(--gold); }
+  .kpi-card.c2 .kpi-value { color: var(--teal); }
+  .kpi-card.c3 .kpi-value { color: var(--green); }
+  .kpi-card.c4 .kpi-value { color: var(--highlight); }
+  .kpi-icon { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); font-size: 36px; opacity: 0.12; }
+
+  /* CHARTS GRID */
+  .charts-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+  .chart-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+  }
+  .chart-card.full-width { grid-column: 1 / -1; }
+  .chart-title {
+    font-size: 14px; font-weight: 600;
+    color: var(--text);
+    margin-bottom: 16px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .chart-title::before {
+    content: ''; width: 4px; height: 16px;
+    border-radius: 2px; background: var(--gold);
+    display: inline-block;
+  }
+  .chart-canvas-wrap { position: relative; }
+
+  /* BOTTOM ROW */
+  .bottom-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 16px;
+  }
+
+  /* TABLE */
+  .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .data-table th {
+    background: var(--accent);
+    color: var(--gold);
+    padding: 10px 12px;
+    text-align: left;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .data-table td {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+  }
+  .data-table tr:hover td { background: rgba(255,255,255,0.03); }
+  .data-table tr:last-child td { border-bottom: none; }
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .badge-blue { background: rgba(0,180,216,0.2); color: var(--teal); }
+  .badge-gold { background: rgba(245,166,35,0.2); color: var(--gold); }
+  .badge-green { background: rgba(6,214,160,0.2); color: var(--green); }
+  .badge-red { background: rgba(233,69,96,0.2); color: var(--highlight); }
+
+  /* FOOTER */
+  .footer {
+    text-align: center;
+    padding: 16px;
+    font-size: 12px;
+    color: var(--subtext);
+    border-top: 1px solid var(--border);
+    margin-top: 24px;
+  }
+
+  /* RESPONSIVE */
+  @media (max-width: 900px) {
+    .kpi-row { grid-template-columns: 1fr 1fr; }
+    .charts-grid { grid-template-columns: 1fr; }
+    .bottom-row { grid-template-columns: 1fr; }
+  }
+
+  /* Page hide */
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* Tooltip custom */
+  .scroll-table { max-height: 280px; overflow-y: auto; }
+  .scroll-table::-webkit-scrollbar { width: 4px; }
+  .scroll-table::-webkit-scrollbar-track { background: var(--secondary); }
+  .scroll-table::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div>
+    <div class="logo-icon" style="display:inline-flex;margin-right:12px;vertical-align:middle;">📊</div>
+    <span>
+      <div class="header h1" style="display:inline;font-size:20px;font-weight:700;">Análise de Vendas de Cursos</div>
+      <div class="subtitle" style="margin-top:4px;">Aula 02 AVD · Dashboard Interativo · Dados 2023–2025</div>
+    </span>
+  </div>
+  <div class="logo">
+    <div class="logo-icon">🎓</div>
+    <span>Plataforma de<br>Treinamentos</span>
+  </div>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <div class="tab active" onclick="showPage(0)">📈 Análise 1 — Visão Geral</div>
+  <div class="tab" onclick="showPage(1)">🔍 Análise 2 — Detalhamento</div>
+</div>
+
+<!-- PAGE 1 -->
+<div class="page active" id="page0">
+<div class="main">
+
+  <!-- FILTERS -->
+  <div class="filters">
+    <div class="filter-group">
+      <label>🗓 Mês</label>
+      <select id="f-mes">
+        <option value="">Todos os Meses</option>
+        <option value="01">Janeiro</option><option value="02">Fevereiro</option>
+        <option value="03">Março</option><option value="04">Abril</option>
+        <option value="05">Maio</option><option value="06">Junho</option>
+        <option value="07">Julho</option><option value="08">Agosto</option>
+        <option value="09">Setembro</option><option value="10">Outubro</option>
+        <option value="11">Novembro</option><option value="12">Dezembro</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label>📅 Ano</label>
+      <select id="f-ano">
+        <option value="">Todos os Anos</option>
+        <option value="23">2023</option>
+        <option value="24">2024</option>
+        <option value="25">2025</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label>👤 Vendedor</label>
+      <select id="f-vendedor">
+        <option value="">Todos os Vendedores</option>
+        <option value="Eduardo">Eduardo</option>
+        <option value="Arruda">Arruda</option>
+        <option value="Nascimento">Nascimento</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label>📦 Produto</label>
+      <select id="f-produto">
+        <option value="">Todos os Produtos</option>
+        <option value="Treinamento Power BI">Power BI</option>
+        <option value="Treinamento Análise de Dados">Análise de Dados</option>
+        <option value="Treinamento MS Excel Avançado">MS Excel Avançado</option>
+        <option value="DDMC">DDMC</option>
+      </select>
+    </div>
+    <button class="filter-btn" onclick="applyFilters()">✔ Aplicar</button>
+    <button class="filter-btn reset" onclick="resetFilters()">↺ Resetar</button>
+  </div>
+
+  <!-- KPI CARDS -->
+  <div class="kpi-row">
+    <div class="kpi-card c1">
+      <div class="kpi-label">Receita Total</div>
+      <div class="kpi-value" id="kpi-receita">R$ 0</div>
+      <div style="font-size:12px;color:var(--subtext);">Total acumulado</div>
+      <div class="kpi-icon">💰</div>
+    </div>
+    <div class="kpi-card c2">
+      <div class="kpi-label">Média por Venda</div>
+      <div class="kpi-value" id="kpi-media">R$ 0</div>
+      <div style="font-size:12px;color:var(--subtext);">Por transação</div>
+      <div class="kpi-icon">📊</div>
+    </div>
+    <div class="kpi-card c3">
+      <div class="kpi-label">Total de Vendas</div>
+      <div class="kpi-value" id="kpi-contagem">0</div>
+      <div style="font-size:12px;color:var(--subtext);">Transações</div>
+      <div class="kpi-icon">🧾</div>
+    </div>
+    <div class="kpi-card c4">
+      <div class="kpi-label">Qtde. Vendida</div>
+      <div class="kpi-value" id="kpi-quant">0</div>
+      <div style="font-size:12px;color:var(--subtext);">Unidades totais</div>
+      <div class="kpi-icon">📦</div>
+    </div>
+  </div>
+
+  <!-- CHARTS ROW 1 -->
+  <div class="charts-grid">
+    <div class="chart-card full-width">
+      <div class="chart-title">Análise Periódica — Receita ao Longo do Tempo</div>
+      <div class="chart-canvas-wrap" style="height:220px">
+        <canvas id="chart-area"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- CHARTS ROW 2 -->
+  <div class="charts-grid">
+    <div class="chart-card">
+      <div class="chart-title">Receita por Produto (Donut)</div>
+      <div class="chart-canvas-wrap" style="height:240px">
+        <canvas id="chart-donut"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Análise por Vendedor</div>
+      <div class="chart-canvas-wrap" style="height:240px">
+        <canvas id="chart-bar-vendedor"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- CHARTS ROW 3 -->
+  <div class="charts-grid">
+    <div class="chart-card full-width">
+      <div class="chart-title">Contagem de Vendas por Produto</div>
+      <div class="chart-canvas-wrap" style="height:200px">
+        <canvas id="chart-col-produto"></canvas>
+      </div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<!-- PAGE 2 -->
+<div class="page" id="page1">
+<div class="main">
+
+  <!-- FILTERS PAGE 2 -->
+  <div class="filters">
+    <div class="filter-group">
+      <label>🗓 Mês</label>
+      <select id="f2-mes">
+        <option value="">Todos os Meses</option>
+        <option value="01">Janeiro</option><option value="02">Fevereiro</option>
+        <option value="03">Março</option><option value="04">Abril</option>
+        <option value="05">Maio</option><option value="06">Junho</option>
+        <option value="07">Julho</option><option value="08">Agosto</option>
+        <option value="09">Setembro</option><option value="10">Outubro</option>
+        <option value="11">Novembro</option><option value="12">Dezembro</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label>📅 Ano</label>
+      <select id="f2-ano">
+        <option value="">Todos os Anos</option>
+        <option value="23">2023</option>
+        <option value="24">2024</option>
+        <option value="25">2025</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label>👤 Vendedor</label>
+      <select id="f2-vendedor">
+        <option value="">Todos os Vendedores</option>
+        <option value="Eduardo">Eduardo</option>
+        <option value="Arruda">Arruda</option>
+        <option value="Nascimento">Nascimento</option>
+      </select>
+    </div>
+    <button class="filter-btn" onclick="applyFilters2()">✔ Aplicar</button>
+    <button class="filter-btn reset" onclick="resetFilters2()">↺ Resetar</button>
+  </div>
+
+  <!-- KPI CARDS PAGE 2 -->
+  <div class="kpi-row">
+    <div class="kpi-card c1">
+      <div class="kpi-label">Receita Total</div>
+      <div class="kpi-value" id="kpi2-receita">R$ 0</div>
+      <div class="kpi-icon">💰</div>
+    </div>
+    <div class="kpi-card c2">
+      <div class="kpi-label">Média por Venda</div>
+      <div class="kpi-value" id="kpi2-media">R$ 0</div>
+      <div class="kpi-icon">📊</div>
+    </div>
+    <div class="kpi-card c3">
+      <div class="kpi-label">Total de Vendas</div>
+      <div class="kpi-value" id="kpi2-contagem">0</div>
+      <div class="kpi-icon">🧾</div>
+    </div>
+    <div class="kpi-card c4">
+      <div class="kpi-label">Qtde. Vendida</div>
+      <div class="kpi-value" id="kpi2-quant">0</div>
+      <div class="kpi-icon">📦</div>
+    </div>
+  </div>
+
+  <!-- CHARTS PAGE 2 -->
+  <div class="charts-grid">
+    <div class="chart-card full-width">
+      <div class="chart-title">Análise Periódica — Receita ao Longo do Tempo</div>
+      <div style="height:200px">
+        <canvas id="chart2-area"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="charts-grid">
+    <div class="chart-card">
+      <div class="chart-title">Receita por Produto</div>
+      <div style="height:240px">
+        <canvas id="chart2-donut"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Análise por Vendedor</div>
+      <div style="height:240px">
+        <canvas id="chart2-bar"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="charts-grid">
+    <div class="chart-card full-width">
+      <div class="chart-title">Análise por Produto — Detalhamento de Receita</div>
+      <div style="height:200px">
+        <canvas id="chart2-col"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- DATA TABLE -->
+  <div class="chart-card" style="margin-top:0">
+    <div class="chart-title">Tabela de Transações</div>
+    <div class="scroll-table">
+      <table class="data-table" id="data-table">
+        <thead>
+          <tr>
+            <th>Data</th>
+            <th>Vendedor</th>
+            <th>Produto</th>
+            <th>Qtde</th>
+            <th>Preço Unit.</th>
+            <th>Total</th>
+          </tr>
+        </thead>
+        <tbody id="table-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<!-- FOOTER -->
+<div class="footer">
+  Dashboard criado com base no arquivo PBIX da Aula 02 · AVD · Dados: 2023–2025 · Guilherme Mourão
+</div>
+
+<script>
+// ===========================
+// DATA
+// ===========================
+const RAW = [
+  {data:"01/01/23",preco:1800,vendedor:"Eduardo",produto:"Treinamento Power BI",id_produto:1,quantidade:9,total:16200},
+  {data:"01/02/23",preco:2000,vendedor:"Arruda",produto:"Treinamento Análise de Dados",id_produto:4,quantidade:5,total:10000},
+  {data:"01/03/23",preco:900,vendedor:"Eduardo",produto:"Treinamento MS Excel Avançado",id_produto:3,quantidade:8,total:7200},
+  {data:"01/04/23",preco:2000,vendedor:"Nascimento",produto:"Treinamento Análise de Dados",id_produto:4,quantidade:11,total:22000},
+  {data:"01/05/23",preco:1800,vendedor:"Nascimento",produto:"Treinamento Power BI",id_produto:1,quantidade:13,total:23400},
+  {data:"01/06/23",preco:900,vendedor:"Eduardo",produto:"Treinamento MS Excel Avançado",id_produto:3,quantidade:4,total:3600},
+  {data:"01/07/23",preco:1800,vendedor:"Arruda",produto:"Treinamento Power BI",id_produto:1,quantidade:5,total:9000},
+  {data:"01/08/23",preco:3000,vendedor:"Nascimento",produto:"DDMC",id_produto:2,quantidade:9,total:27000},
+  {data:"01/09/23",preco:2000,vendedor:"Eduardo",produto:"Treinamento Análise de Dados",id_produto:4,quantidade:10,total:20000},
+  {data:"01/10/23",preco:900,vendedor:"Nascimento",produto:"Treinamento MS Excel Avançado",id_produto:3,quantidade:16,total:14400},
+  {data:"01/11/23",preco:1000,vendedor:"Eduardo",produto:"DDMC",id_produto:2,quantidade:1,total:1000},
+  {data:"01/12/23",preco:2000,vendedor:"Arruda",produto:"Treinamento Análise de Dados",id_produto:4,quantidade:16,total:32000},
+  {data:"01/01/24",preco:900,vendedor:"Nascimento",produto:"Treinamento MS Excel Avançado",id_produto:3,quantidade:4,total:3600},
+  {data:"01/02/24",preco:2000,vendedor:"Eduardo",produto:"Treinamento Análise de Dados",id_produto:4,quantidade:2,total:4000},
+  {data:"01/03/24",preco:900,vendedor:"Nascimento",produto:"Treinamento MS Excel Avançado",id_produto:3,quantidade:1,total:900},
+  {data:"02/04/23",preco:1800,vendedor:"Eduardo",produto:"Treinamento Power BI",id_produto:1,quantidade:9,total:16200},
+  {data:"02/02/23",preco:2000,vendedor:"Arruda",produto:"Treinamento Análise de Dados",id_produto:4,quantidade:5,total:10000},
+  {data:"03/03/23",preco:900,vendedor:"Eduardo",produto:"Treinamento MS Excel Avançado",id_produto:3,quantidade:8,total:7200},
+  {data:"04/04/23",preco:2000,vendedor:"Nascimento",produto:"Treinamento Análise de Dados",id_produto:4,quantidade:11,total:22000},
+  {data:"05/05/23",preco:1800,vendedor:"Nascimento",produto:"Treinamento Power BI",id_produto:1,quantidade:13,total:23400},
+  {data:"06/06/23",preco:900,vendedor:"Eduardo",produto:"Treinamento MS Excel Avançado",id_produto:3,quantidade:4,total:3600},
+  {data:"07/07/23",preco:1800,vendedor:"Arruda",produto:"Treinamento Power BI",id_produto:1,quantidade:5,total:9000},
+  {data:"08/08/23",preco:3000,vendedor:"Nascimento",produto:"DDMC",id_produto:2,quantidade:9,total:27000},
+  {data:"09/09/23",preco:2000,vendedor:"Eduardo",produto:"Treinamento Análise de Dados",id_produto:4,quantidade:10,total:20000},
+  {data:"10/10/23",preco:900,vendedor:"Nascimento",produto:"Treinamento MS Excel Avançado",id_produto:3,quantidade:16,total:14400},
+  {data:"11/11/23",preco:1000,vendedor:"Eduardo",produto:"DDMC",id_produto:2,quantidade:1,total:1000},
+  {data:"12/12/23",preco:2000,vendedor:"Arruda",produto:"Treinamento Análise de Dados",id_produto:4,quantidade:16,total:32000},
+  {data:"01/04/24",preco:900,vendedor:"Nascimento",produto:"Treinamento MS Excel Avançado",id_produto:3,quantidade:4,total:3600},
+  {data:"01/05/24",preco:2000,vendedor:"Eduardo",produto:"Treinamento Análise de Dados",id_produto:4,quantidade:2,total:4000},
+  {data:"01/06/24",preco:900,vendedor:"Nascimento",produto:"Treinamento MS Excel Avançado",id_produto:3,quantidade:1,total:900},
+  {data:"10/01/24",preco:1800,vendedor:"Eduardo",produto:"Treinamento Power BI",id_produto:1,quantidade:9,total:16200},
+  {data:"01/02/24",preco:2000,vendedor:"Arruda",produto:"Treinamento Análise de Dados",id_produto:4,quantidade:5,total:10000},
+  {data:"01/03/24",preco:900,vendedor:"Eduardo",produto:"Treinamento MS Excel Avançado",id_produto:3,quantidade:8,total:7200},
+  {data:"01/04/24",preco:2000,vendedor:"Nascimento",produto:"Treinamento Análise de Dados",id_produto:4,quantidade:11,total:22000},
+  {data:"01/05/24",preco:1800,vendedor:"Nascimento",produto:"Treinamento Power BI",id_produto:1,quantidade:13,total:23400},
+  {data:"01/06/24",preco:900,vendedor:"Eduardo",produto:"Treinamento MS Excel Avançado",id_produto:3,quantidade:4,total:3600},
+  {data:"01/07/24",preco:1800,vendedor:"Arruda",produto:"Treinamento Power BI",id_produto:1,quantidade:5,total:9000},
+  {data:"01/08/24",preco:3000,vendedor:"Nascimento",produto:"DDMC",id_produto:2,quantidade:9,total:27000},
+  {data:"01/09/24",preco:2000,vendedor:"Eduardo",produto:"Treinamento Análise de Dados",id_produto:4,quantidade:10,total:20000},
+  {data:"01/10/24",preco:900,vendedor:"Nascimento",produto:"Treinamento MS Excel Avançado",id_produto:3,quantidade:16,total:14400},
+  {data:"01/11/24",preco:1000,vendedor:"Eduardo",produto:"DDMC",id_produto:2,quantidade:1,total:1000},
+  {data:"01/12/24",preco:2000,vendedor:"Arruda",produto:"Treinamento Análise de Dados",id_produto:4,quantidade:16,total:32000},
+  {data:"02/04/24",preco:1800,vendedor:"Eduardo",produto:"Treinamento Power BI",id_produto:1,quantidade:9,total:16200},
+  {data:"02/02/24",preco:2000,vendedor:"Arruda",produto:"Treinamento Análise de Dados",id_produto:4,quantidade:5,total:10000},
+  {data:"03/03/24",preco:900,vendedor:"Eduardo",produto:"Treinamento MS Excel Avançado",id_produto:3,quantidade:8,total:7200},
+  {data:"04/04/24",preco:2000,vendedor:"Nascimento",produto:"Treinamento Análise de Dados",id_produto:4,quantidade:11,total:22000},
+  {data:"05/05/24",preco:1800,vendedor:"Nascimento",produto:"Treinamento Power BI",id_produto:1,quantidade:13,total:23400},
+  {data:"06/06/24",preco:900,vendedor:"Eduardo",produto:"Treinamento MS Excel Avançado",id_produto:3,quantidade:4,total:3600},
+  {data:"07/07/24",preco:1800,vendedor:"Arruda",produto:"Treinamento Power BI",id_produto:1,quantidade:5,total:9000},
+  {data:"08/08/24",preco:3000,vendedor:"Nascimento",produto:"DDMC",id_produto:2,quantidade:9,total:27000},
+  {data:"09/09/24",preco:2000,vendedor:"Eduardo",produto:"Treinamento Análise de Dados",id_produto:4,quantidade:10,total:20000},
+  {data:"10/10/23",preco:900,vendedor:"Nascimento",produto:"Treinamento MS Excel Avançado",id_produto:3,quantidade:16,total:14400},
+  {data:"11/11/23",preco:1000,vendedor:"Eduardo",produto:"DDMC",id_produto:2,quantidade:1,total:1000},
+  {data:"12/12/23",preco:2000,vendedor:"Arruda",produto:"Treinamento Análise de Dados",id_produto:4,quantidade:16,total:32000},
+  {data:"01/04/24",preco:900,vendedor:"Nascimento",produto:"Treinamento MS Excel Avançado",id_produto:3,quantidade:4,total:3600},
+  {data:"01/05/24",preco:2000,vendedor:"Eduardo",produto:"Treinamento Análise de Dados",id_produto:4,quantidade:2,total:4000},
+  {data:"03/05/24",preco:900,vendedor:"Nascimento",produto:"Treinamento MS Excel Avançado",id_produto:3,quantidade:1,total:900},
+  {data:"19/01/25",preco:1800,vendedor:"Eduardo",produto:"Treinamento Power BI",id_produto:1,quantidade:9,total:16200},
+  {data:"10/02/25",preco:2000,vendedor:"Arruda",produto:"Treinamento Análise de Dados",id_produto:4,quantidade:5,total:10000},
+  {data:"01/03/25",preco:900,vendedor:"Eduardo",produto:"Treinamento MS Excel Avançado",id_produto:3,quantidade:8,total:7200},
+  {data:"01/04/25",preco:2000,vendedor:"Nascimento",produto:"Treinamento Análise de Dados",id_produto:4,quantidade:11,total:22000},
+  {data:"01/05/25",preco:1800,vendedor:"Nascimento",produto:"Treinamento Power BI",id_produto:1,quantidade:13,total:23400},
+  {data:"15/03/25",preco:900,vendedor:"Eduardo",produto:"Treinamento MS Excel Avançado",id_produto:3,quantidade:4,total:3600},
+  {data:"22/04/25",preco:1800,vendedor:"Arruda",produto:"Treinamento Power BI",id_produto:1,quantidade:5,total:9000},
+  {data:"30/03/25",preco:3000,vendedor:"Nascimento",produto:"DDMC",id_produto:2,quantidade:9,total:27000},
+  {data:"01/02/25",preco:2000,vendedor:"Eduardo",produto:"Treinamento Análise de Dados",id_produto:4,quantidade:10,total:20000},
+  {data:"14/01/25",preco:900,vendedor:"Nascimento",produto:"Treinamento MS Excel Avançado",id_produto:3,quantidade:16,total:14400},
+  {data:"15/01/25",preco:1000,vendedor:"Eduardo",produto:"DDMC",id_produto:2,quantidade:1,total:1000},
+  {data:"16/01/25",preco:2000,vendedor:"Arruda",produto:"Treinamento Análise de Dados",id_produto:4,quantidade:16,total:32000},
+  {data:"17/01/25",preco:900,vendedor:"Nascimento",produto:"Treinamento MS Excel Avançado",id_produto:3,quantidade:4,total:3600},
+  {data:"01/02/25",preco:2000,vendedor:"Eduardo",produto:"Treinamento Análise de Dados",id_produto:4,quantidade:2,total:4000},
+  {data:"04/02/25",preco:900,vendedor:"Nascimento",produto:"Treinamento MS Excel Avançado",id_produto:3,quantidade:1,total:900},
+  {data:"20/04/25",preco:1800,vendedor:"Eduardo",produto:"Treinamento Power BI",id_produto:1,quantidade:9,total:16200},
+  {data:"14/01/25",preco:2000,vendedor:"Arruda",produto:"Treinamento Análise de Dados",id_produto:4,quantidade:5,total:10000},
+  {data:"15/01/25",preco:900,vendedor:"Eduardo",produto:"Treinamento MS Excel Avançado",id_produto:3,quantidade:8,total:7200},
+  {data:"16/01/25",preco:2000,vendedor:"Nascimento",produto:"Treinamento Análise de Dados",id_produto:4,quantidade:11,total:22000},
+  {data:"17/01/25",preco:1800,vendedor:"Nascimento",produto:"Treinamento Power BI",id_produto:1,quantidade:13,total:23400},
+  {data:"01/02/25",preco:900,vendedor:"Eduardo",produto:"Treinamento MS Excel Avançado",id_produto:3,quantidade:4,total:3600},
+  {data:"04/02/25",preco:1800,vendedor:"Arruda",produto:"Treinamento Power BI",id_produto:1,quantidade:5,total:9000},
+  {data:"20/04/25",preco:3000,vendedor:"Nascimento",produto:"DDMC",id_produto:2,quantidade:9,total:27000},
+  {data:"09/02/25",preco:2000,vendedor:"Eduardo",produto:"Treinamento Análise de Dados",id_produto:4,quantidade:10,total:20000},
+  {data:"10/01/25",preco:900,vendedor:"Nascimento",produto:"Treinamento MS Excel Avançado",id_produto:3,quantidade:16,total:14400},
+  {data:"10/01/25",preco:1000,vendedor:"Eduardo",produto:"DDMC",id_produto:2,quantidade:1,total:1000},
+  {data:"10/01/25",preco:2000,vendedor:"Arruda",produto:"Treinamento Análise de Dados",id_produto:4,quantidade:16,total:32000},
+  {data:"01/04/25",preco:900,vendedor:"Nascimento",produto:"Treinamento MS Excel Avançado",id_produto:3,quantidade:4,total:3600},
+  {data:"01/05/25",preco:2000,vendedor:"Eduardo",produto:"Treinamento Análise de Dados",id_produto:4,quantidade:2,total:4000}
+];
+
+// ===========================
+// CHART INSTANCES
+// ===========================
+const charts = {};
+
+// ===========================
+// COLORS
+// ===========================
+const COLORS = {
+  gold: '#f5a623', teal: '#00b4d8', green: '#06d6a0',
+  red: '#e94560', purple: '#7b2d8b', blue: '#4361ee',
+  orange: '#f4a261'
+};
+const PROD_COLORS = [COLORS.teal, COLORS.gold, COLORS.green, COLORS.red];
+const VENDOR_COLORS = [COLORS.purple, COLORS.gold, COLORS.teal];
+
+function fmt(v) {
+  if (v >= 1000000) return 'R$ ' + (v/1000000).toFixed(1) + 'M';
+  if (v >= 1000) return 'R$ ' + (v/1000).toFixed(0) + 'K';
+  return 'R$ ' + v.toLocaleString('pt-BR');
+}
+function fmtFull(v) {
+  return 'R$ ' + v.toLocaleString('pt-BR', {minimumFractionDigits:2,maximumFractionDigits:2});
+}
+
+// ===========================
+// FILTER DATA
+// ===========================
+function filterData(mes, ano, vendedor, produto) {
+  return RAW.filter(r => {
+    const parts = r.data.split('/');
+    const m = parts[1], y = parts[2];
+    if (mes && m !== mes) return false;
+    if (ano && y !== ano) return false;
+    if (vendedor && r.vendedor !== vendedor) return false;
+    if (produto && r.produto !== produto) return false;
+    return true;
+  });
+}
+
+// ===========================
+// COMPUTE AGGREGATES
+// ===========================
+function computeAgg(data) {
+  const receita = data.reduce((s,r)=>s+r.total,0);
+  const contagem = data.length;
+  const quant = data.reduce((s,r)=>s+r.quantidade,0);
+  const media = contagem > 0 ? receita/contagem : 0;
+
+  // by period
+  const byPeriod = {};
+  data.forEach(r => {
+    const p = r.data.split('/');
+    const key = `${p[2]}-${p[1]}`;
+    byPeriod[key] = (byPeriod[key]||0) + r.total;
+  });
+
+  // by product
+  const byProduct = {};
+  const cntProduct = {};
+  data.forEach(r => {
+    byProduct[r.produto] = (byProduct[r.produto]||0) + r.total;
+    cntProduct[r.produto] = (cntProduct[r.produto]||0) + 1;
+  });
+
+  // by vendor
+  const byVendor = {};
+  data.forEach(r => {
+    byVendor[r.vendedor] = (byVendor[r.vendedor]||0) + r.total;
+  });
+
+  return { receita, contagem, quant, media, byPeriod, byProduct, cntProduct, byVendor };
+}
+
+// ===========================
+// CHART HELPERS
+// ===========================
+const defaultOpts = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: { labels: { color: '#8a9bb8', font: { size: 12 } } },
+    tooltip: {
+      backgroundColor: '#1e2a3a',
+      titleColor: '#e8eaf0',
+      bodyColor: '#8a9bb8',
+      borderColor: '#2a3a5a',
+      borderWidth: 1
+    }
+  }
+};
+
+function makeAreaChart(id, agg) {
+  const sorted = Object.entries(agg.byPeriod).sort((a,b)=>a[0]<b[0]?-1:1);
+  const labels = sorted.map(([k])=>{
+    const [y,m]=k.split('-');
+    const months=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+    return months[parseInt(m)-1]+'/'+y;
+  });
+  const values = sorted.map(([,v])=>v);
+
+  if (charts[id]) charts[id].destroy();
+  charts[id] = new Chart(document.getElementById(id), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Receita Total',
+        data: values,
+        borderColor: COLORS.teal,
+        backgroundColor: 'rgba(0,180,216,0.15)',
+        fill: true,
+        tension: 0.4,
+        pointBackgroundColor: COLORS.teal,
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        borderWidth: 2
+      }]
+    },
+    options: {
+      ...defaultOpts,
+      scales: {
+        x: { ticks: { color: '#8a9bb8', maxRotation: 45 }, grid: { color: 'rgba(255,255,255,0.04)' } },
+        y: {
+          ticks: { color: '#8a9bb8', callback: v => fmt(v) },
+          grid: { color: 'rgba(255,255,255,0.06)' }
+        }
+      }
+    }
+  });
+}
+
+function makeDonutChart(id, agg) {
+  const products = Object.keys(agg.byProduct);
+  const values = products.map(p => agg.byProduct[p]);
+  const shortNames = products.map(p => p.replace('Treinamento ','').replace(' Avançado',''));
+
+  if (charts[id]) charts[id].destroy();
+  charts[id] = new Chart(document.getElementById(id), {
+    type: 'doughnut',
+    data: {
+      labels: shortNames,
+      datasets: [{
+        data: values,
+        backgroundColor: PROD_COLORS,
+        borderColor: '#1e2a3a',
+        borderWidth: 2,
+        hoverOffset: 6
+      }]
+    },
+    options: {
+      ...defaultOpts,
+      cutout: '65%',
+      plugins: {
+        ...defaultOpts.plugins,
+        legend: { position: 'right', labels: { color: '#8a9bb8', font:{size:11}, padding: 12 } },
+        tooltip: {
+          ...defaultOpts.plugins.tooltip,
+          callbacks: { label: ctx => ` ${ctx.label}: ${fmtFull(ctx.raw)}` }
+        }
+      }
+    }
+  });
+}
+
+function makeBarVendedor(id, agg) {
+  const vendors = Object.keys(agg.byVendor).sort((a,b)=>agg.byVendor[b]-agg.byVendor[a]);
+  const values = vendors.map(v => agg.byVendor[v]);
+
+  if (charts[id]) charts[id].destroy();
+  charts[id] = new Chart(document.getElementById(id), {
+    type: 'bar',
+    data: {
+      labels: vendors,
+      datasets: [{
+        label: 'Receita',
+        data: values,
+        backgroundColor: VENDOR_COLORS,
+        borderRadius: 6,
+        borderSkipped: false
+      }]
+    },
+    options: {
+      ...defaultOpts,
+      indexAxis: 'y',
+      scales: {
+        x: { ticks: { color: '#8a9bb8', callback: v=>fmt(v) }, grid: { color: 'rgba(255,255,255,0.05)' } },
+        y: { ticks: { color: '#e8eaf0', font: {weight: 'bold'} }, grid: { display: false } }
+      },
+      plugins: {
+        ...defaultOpts.plugins,
+        legend: { display: false },
+        tooltip: { ...defaultOpts.plugins.tooltip, callbacks: { label: ctx => ` ${fmtFull(ctx.raw)}` } }
+      }
+    }
+  });
+}
+
+function makeColProduto(id, agg, useRevenue=false) {
+  const products = Object.keys(useRevenue ? agg.byProduct : agg.cntProduct)
+    .sort((a,b) => (useRevenue ? agg.byProduct[b]-agg.byProduct[a] : agg.cntProduct[b]-agg.cntProduct[a]));
+  const values = products.map(p => useRevenue ? agg.byProduct[p] : agg.cntProduct[p]);
+  const shortNames = products.map(p => p.replace('Treinamento ',''));
+
+  if (charts[id]) charts[id].destroy();
+  charts[id] = new Chart(document.getElementById(id), {
+    type: 'bar',
+    data: {
+      labels: shortNames,
+      datasets: [{
+        label: useRevenue ? 'Receita' : 'Contagem',
+        data: values,
+        backgroundColor: [COLORS.gold, COLORS.teal, COLORS.green, COLORS.red],
+        borderRadius: 6,
+        borderSkipped: false
+      }]
+    },
+    options: {
+      ...defaultOpts,
+      scales: {
+        x: { ticks: { color: '#8a9bb8' }, grid: { display: false } },
+        y: {
+          ticks: { color: '#8a9bb8', callback: v => useRevenue ? fmt(v) : v },
+          grid: { color: 'rgba(255,255,255,0.05)' }
+        }
+      },
+      plugins: {
+        ...defaultOpts.plugins,
+        legend: { display: false },
+        tooltip: { ...defaultOpts.plugins.tooltip, callbacks: {
+          label: ctx => useRevenue ? ` ${fmtFull(ctx.raw)}` : ` ${ctx.raw} vendas`
+        }}
+      }
+    }
+  });
+}
+
+// ===========================
+// UPDATE FUNCTIONS
+// ===========================
+function updatePage1(data) {
+  const agg = computeAgg(data);
+  document.getElementById('kpi-receita').textContent = fmt(agg.receita);
+  document.getElementById('kpi-media').textContent = fmt(Math.round(agg.media));
+  document.getElementById('kpi-contagem').textContent = agg.contagem;
+  document.getElementById('kpi-quant').textContent = agg.quant.toLocaleString('pt-BR');
+
+  makeAreaChart('chart-area', agg);
+  makeDonutChart('chart-donut', agg);
+  makeBarVendedor('chart-bar-vendedor', agg);
+  makeColProduto('chart-col-produto', agg, false);
+}
+
+function updatePage2(data) {
+  const agg = computeAgg(data);
+  document.getElementById('kpi2-receita').textContent = fmt(agg.receita);
+  document.getElementById('kpi2-media').textContent = fmt(Math.round(agg.media));
+  document.getElementById('kpi2-contagem').textContent = agg.contagem;
+  document.getElementById('kpi2-quant').textContent = agg.quant.toLocaleString('pt-BR');
+
+  makeAreaChart('chart2-area', agg);
+  makeDonutChart('chart2-donut', agg);
+  makeBarVendedor('chart2-bar', agg);
+  makeColProduto('chart2-col', agg, true);
+
+  // Update table
+  const tbody = document.getElementById('table-body');
+  tbody.innerHTML = '';
+  const sorted = [...data].sort((a,b)=>{
+    const [da,ma,ya]=a.data.split('/'); const [db,mb,yb]=b.data.split('/');
+    return new Date(`20${ya}`,ma-1,da) - new Date(`20${yb}`,mb-1,db);
+  });
+  sorted.forEach(r => {
+    const prodColors = {
+      'Treinamento Power BI': 'badge-blue',
+      'Treinamento Análise de Dados': 'badge-gold',
+      'Treinamento MS Excel Avançado': 'badge-green',
+      'DDMC': 'badge-red'
+    };
+    const vendColors = {
+      'Eduardo': 'badge-blue', 'Arruda': 'badge-gold', 'Nascimento': 'badge-green'
+    };
+    const shortProd = r.produto.replace('Treinamento ','');
+    tbody.innerHTML += `
+      <tr>
+        <td>${r.data}</td>
+        <td><span class="badge ${vendColors[r.vendedor]||''}">${r.vendedor}</span></td>
+        <td><span class="badge ${prodColors[r.produto]||''}">${shortProd}</span></td>
+        <td style="text-align:center">${r.quantidade}</td>
+        <td style="text-align:right">${fmtFull(r.preco)}</td>
+        <td style="text-align:right;font-weight:600;color:var(--gold)">${fmtFull(r.total)}</td>
+      </tr>`;
+  });
+}
+
+// ===========================
+// FILTER ACTIONS
+// ===========================
+function applyFilters() {
+  const mes = document.getElementById('f-mes').value;
+  const ano = document.getElementById('f-ano').value;
+  const vendedor = document.getElementById('f-vendedor').value;
+  const produto = document.getElementById('f-produto').value;
+  updatePage1(filterData(mes,ano,vendedor,produto));
+}
+function resetFilters() {
+  ['f-mes','f-ano','f-vendedor','f-produto'].forEach(id => document.getElementById(id).value='');
+  updatePage1(RAW);
+}
+function applyFilters2() {
+  const mes = document.getElementById('f2-mes').value;
+  const ano = document.getElementById('f2-ano').value;
+  const vendedor = document.getElementById('f2-vendedor').value;
+  updatePage2(filterData(mes,ano,vendedor,''));
+}
+function resetFilters2() {
+  ['f2-mes','f2-ano','f2-vendedor'].forEach(id => document.getElementById(id).value='');
+  updatePage2(RAW);
+}
+
+// ===========================
+// TABS
+// ===========================
+function showPage(idx) {
+  document.querySelectorAll('.page').forEach((p,i)=>{
+    p.classList.toggle('active', i===idx);
+  });
+  document.querySelectorAll('.tab').forEach((t,i)=>{
+    t.classList.toggle('active', i===idx);
+  });
+  // Refresh page2 charts when switching
+  if (idx===1) {
+    setTimeout(() => updatePage2(RAW), 50);
+  }
+}
+
+// ===========================
+// INIT
+// ===========================
+window.addEventListener('DOMContentLoaded', () => {
+  updatePage1(RAW);
+  updatePage2(RAW);
+});
+</script>
+</body>
+</html>
